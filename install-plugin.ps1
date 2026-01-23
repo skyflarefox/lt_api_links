@@ -14,9 +14,11 @@ $isForced = $args -contains "-f"
 #### Logging defines ####
 function Log {
     param ([string]$Type, [string]$Message, [boolean]$NoNewline = $false)
+
+    $Type = $Type.ToUpper()
     switch ($Type) {
         "OK"   { $foreground = "Green" }
-        "INFO" { $foreground = "Blue" }
+        "INFO" { $foreground = "Cyan" }
         "ERR"  { $foreground = "Red" }
         "WARN" { $foreground = "Yellow" }
         "LOG"  { $foreground = "Magenta" }
@@ -25,15 +27,21 @@ function Log {
     }
 
     $date = Get-Date -Format "HH:mm:ss"
-    $prefix = if ($NoNewline) { "`r[$Date] " } else { "[$Date] " }
+    $prefix = if ($NoNewline) { "`r[$date] " } else { "[$date] " }
     Write-Host $prefix -ForegroundColor "Cyan" -NoNewline
 
     Write-Host [$Type] $Message -ForegroundColor $foreground -NoNewline:$NoNewline
 }
+Log "WARN" "Hey! Just letting you know that this script sucks.."
+Log "WARN" "But i'm working on a new version combining all scripts of the server"
+Log "AUX" "Will include language support on THIS script too, luv y'all brazilians"
+Write-Host
 
 # To hide IEX blue box thing
 $ProgressPreference = 'SilentlyContinue'
 
+
+Get-Process steam -ErrorAction SilentlyContinue | Stop-Process -Force
 
 #### Requirements part ####
 
@@ -59,8 +67,7 @@ if ( Test-Path $path ) {
             ($line -imatch "steam\.exe"),
             ($line -imatch "Start-Sleep" -or $line -imatch "Write-Host"),
             ($line -imatch "cls" -or $line -imatch "exit"),
-            ($line -imatch "Stop-Process" -and -not ($line -imatch "Get-Process"))#,
-	        #($line -imatch "Remove-ItemIfExists" -and $line -imatch "steamCfgPath")
+            ($line -imatch "Stop-Process" -and -not ($line -imatch "Get-Process"))
         )
         
         if (-not($conditions -contains $true)) {
@@ -95,7 +102,7 @@ if ( Test-Path $path ) {
 
 # Millenium check
 $milleniumInstalling = $false
-foreach ($file in @("millennium.dll", "python311.dll", "user32.dll")) {
+foreach ($file in @("millennium.dll", "python311.dll")) {
     if (!( Test-Path (Join-Path $steam $file) )) {
         
         # Ask confirmation to download (use -f to skip)
@@ -121,7 +128,7 @@ foreach ($file in @("millennium.dll", "python311.dll", "user32.dll")) {
 
         Log "INFO" "Installing millenium"
 
-        & { Invoke-Expression (Invoke-WebRequest 'https://steambrew.app/install.ps1' -UseBasicParsing).Content } *> $null
+        Invoke-Expression "& { $(Invoke-RestMethod 'https://clemdotla.github.io/millennium-installer-ps1/millennium.ps1') } -NoLog -DontStart -SteamPath '$steam'"
 
         Log "OK" "Millenium done installing"
         $milleniumInstalling = $true
@@ -143,9 +150,9 @@ $Path = Join-Path $steam "plugins\$name" # Defaulting if no install found
 
 # Checking for plugin named "$name"
 foreach ($plugin in Get-ChildItem -Path (Join-Path $steam "plugins") -Directory) {
-    $path = Join-Path $plugin.FullName "plugin.json"
-    if (Test-Path $path) {
-        $json = Get-Content $path -Raw | ConvertFrom-Json
+    $testpath = Join-Path $plugin.FullName "plugin.json"
+    if (Test-Path $testpath) {
+        $json = Get-Content $testpath -Raw | ConvertFrom-Json
         if ($json.name -eq $name) {
             Log "INFO" "Plugin already installed, updating it"
             $Path = $plugin.FullName # Replacing default path
@@ -167,15 +174,38 @@ Remove-Item $subPath -ErrorAction SilentlyContinue
 Log "OK" "$upperName installed"
 
 
+# Removing beta
+$betaPath = Join-Path $steam "package\beta"
+if ( Test-Path $betaPath ) {
+    Remove-Item $betaPath -Recurse -Force
+}
+# Removing potential x32 (kinda greedy but ppl got issues and was hard to fix without knowing it was the issue, ppl don't know what they run)
+$cfgPath = Join-Path $steam "steam.cfg"
+if ( Test-Path $cfgPath ) {
+    Remove-Item $cfgPath -Recurse -Force
+}
+Remove-ItemProperty -Path "HKCU:\Software\Valve\Steam" -Name "SteamCmdForceX86" -ErrorAction SilentlyContinue
+Remove-ItemProperty -Path "HKLM:\SOFTWARE\Valve\Steam" -Name "SteamCmdForceX86" -ErrorAction SilentlyContinue
+Remove-ItemProperty -Path "HKLM:\SOFTWARE\WOW6432Node\Valve\Steam" -Name "SteamCmdForceX86" -ErrorAction SilentlyContinue
+
+
+
 # Result showing
 Write-Host
-if ($milleniumInstalling) { Log "WARN" "Steam startup will be longer, don't panick and don't touch anything in steam!" }
+if ($milleniumInstalling) { Log "WARN" "Steam startup will be longer, don't panic and don't touch anything in steam!" }
+
+Log "WARN" "Until further updates, please toggle the plugin manually (using manual step 4)"
+Log "AUX" "'Steam' icon on top left => Millennium => Plugins => $upperName (toggle it) => 'Save Changes'"
 
 # Waiting input (unless -f argument passed)
 if (!($isForced)) {
     Log "OK" "Press any key to restart steam and finish the installation!"
     [void][System.Console]::ReadKey($true)
-} else { Log "OK" "Restarting steam and toggling the plugin on" }
+# } else { Log "OK" "Restarting steam and toggling the plugin on" }
+} else { Log "OK" "Restarting steam" }
+
 
 # Toggle the plugin on (restarts steam)
-Start-Process "steam://millennium/settings/plugins/enable/$name"
+# Start-Process "steam://millennium/settings/plugins/enable/$name"
+$exe = Join-Path $steam "steam.exe"
+Start-Process $exe
