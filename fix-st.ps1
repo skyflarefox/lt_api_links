@@ -30,15 +30,15 @@ if (-not $steamPath) {
     Write-Host "ERROR: Could not find Steam installation in registry" -ForegroundColor Red
     exit 1
 }
-# Step 2: Check if hid.dll exists in Steam directory
+# Step 2: Check if xinput1_4.dll exists in Steam directory
 Write-Host "`n[Step 2] Checking if steamtools is installed..." -ForegroundColor Yellow
 
-$hidDllPath = Join-Path $steamPath "hid.dll"
+$hidDllPath = Join-Path $steamPath "xinput1_4.dll"
 
 if (Test-Path $hidDllPath) {
-    Write-Host "hid.dll found at: $hidDllPath" -ForegroundColor Green
+    Write-Host "xinput1_4.dll found at: $hidDllPath" -ForegroundColor Green
 } else {
-    Write-Host "hid.dll NOT found at: $hidDllPath" -ForegroundColor Red
+    Write-Host "xinput1_4.dll NOT found at: $hidDllPath" -ForegroundColor Red
     Write-Host "You do not have steamtools installed! Opening the download page..." -ForegroundColor Red
     Start-Process "https://steamtools.net/download.html" #+ added a redirect to the st download page for ease of access
     Write-Host "`nPress Enter to exit..."
