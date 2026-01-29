@@ -15,8 +15,16 @@
 
 param(
     [string]$ApiKey,
-    [string]$AppId
+    [string]$AppId,
+    [switch]$BackupMode,
+    [switch]$UseMainAPI  # Use this flag to use ManifestHub API instead of backup
 )
+
+# ============== GLOBAL CONFIG ==============
+# Set to $true to always use backup mode (no API key needed)
+# Set to $false to use ManifestHub API by default
+$Global:AlwaysUseBackupMode = $true
+# ===========================================
 
 # Set console encoding to UTF8
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -154,11 +162,18 @@ function Download-Manifest {
         [string]$DepotId,
         [string]$ManifestId,
         [string]$OutputPath,
+        [bool]$UseBackupMode = $false,
         [int]$MaxRetries = 5,
         [int]$RetryDelaySeconds = 3
     )
 
-    $url = "https://api.manifesthub1.filegear-sg.me/manifest?apikey=$ApiKey&depotid=$DepotId&manifestid=$ManifestId"
+    # Use backup URL or main API based on mode
+    if ($UseBackupMode) {
+        $url = "https://raw.githubusercontent.com/qwe213312/k25FCdfEOoEJ42S6/main/${DepotId}_${ManifestId}.manifest"
+        $MaxRetries = 2
+    } else {
+        $url = "https://api.manifesthub1.filegear-sg.me/manifest?apikey=$ApiKey&depotid=$DepotId&manifestid=$ManifestId"
+    }
     $outputFile = Join-Path $OutputPath "${DepotId}_${ManifestId}.manifest"
 
     $lastError = $null
@@ -218,20 +233,35 @@ function Format-FileSize {
 
 Write-Header
 
-# Get API Key (check param -> env var -> prompt)
-if (-not $ApiKey) {
-    $ApiKey = $env:MH_API_KEY
-}
-if (-not $ApiKey) {
-    Write-Host "  Get your API key from: " -NoNewline
-    Write-Host "https://manifesthub1.filegear-sg.me/" -ForegroundColor Yellow
-    Write-Host ""
-    $ApiKey = Read-Host "  Enter ManifestHub API Key"
+# Determine mode: Global config -> param -> env var
+if ($UseMainAPI) {
+    $BackupMode = $false
+} elseif (-not $BackupMode) {
+    if ($Global:AlwaysUseBackupMode) {
+        $BackupMode = $true
+    } elseif ($env:MH_BACKUP_MODE -eq "1" -or $env:MH_BACKUP_MODE -eq "true") {
+        $BackupMode = $true
+    }
 }
 
-if ([string]::IsNullOrWhiteSpace($ApiKey)) {
-    Write-ErrorMsg "API Key is required!"
-    exit 1
+if ($BackupMode) {
+    Write-Host "  [BACKUP MODE] Using GitHub mirror - No API key required" -ForegroundColor Yellow
+} else {
+    # Get API Key (check param -> env var -> prompt)
+    if (-not $ApiKey) {
+        $ApiKey = $env:MH_API_KEY
+    }
+    if (-not $ApiKey) {
+        Write-Host "  Get your API key from: " -NoNewline
+        Write-Host "https://manifesthub1.filegear-sg.me/" -ForegroundColor Yellow
+        Write-Host ""
+        $ApiKey = Read-Host "  Enter ManifestHub API Key"
+    }
+
+    if ([string]::IsNullOrWhiteSpace($ApiKey)) {
+        Write-ErrorMsg "API Key is required!"
+        exit 1
+    }
 }
 
 Write-Host ""
@@ -393,7 +423,7 @@ for ($i = 0; $i -lt $downloadQueue.Count; $i++) {
     Write-Host "  +---------------------------------------------------------------+" -ForegroundColor DarkGray
 
     # Download the manifest
-    $result = Download-Manifest -ApiKey $ApiKey -DepotId $depotId -ManifestId $manifestId -OutputPath $depotCachePath
+    $result = Download-Manifest -ApiKey $ApiKey -DepotId $depotId -ManifestId $manifestId -OutputPath $depotCachePath -UseBackupMode $BackupMode
 
     if ($result.Success) {
         $successCount++
