@@ -1,15 +1,20 @@
+# Anyone seeing this? well don't waste time improving this script.
+# It's messy and just temporary until i get the new version.
+
+
+
 ## Configure this
 $Host.UI.RawUI.WindowTitle = "Luatools plugin installer | .gg/luatools"
 $name = "luatools" # automatic first letter uppercase included
 $link = "https://github.com/madoiscool/ltsteamplugin/releases/latest/download/ltsteamplugin.zip"
 $milleniumTimer = 5 # in seconds for auto-installation
 
-### Hey nerd, here's a "-f" argument to remove "user interactions"
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+chcp 65001 > $null
 
 # Hidden defines
 $steam = (Get-ItemProperty "HKLM:\SOFTWARE\WOW6432Node\Valve\Steam").InstallPath
-$upperName = $name.Substring(0,1).ToUpper() + $name.Substring(1).ToLower()
-$isForced = $args -contains "-f"
+$upperName = $name.Substring(0, 1).ToUpper() + $name.Substring(1).ToLower()
 
 #### Logging defines ####
 function Log {
@@ -17,12 +22,12 @@ function Log {
 
     $Type = $Type.ToUpper()
     switch ($Type) {
-        "OK"   { $foreground = "Green" }
+        "OK" { $foreground = "Green" }
         "INFO" { $foreground = "Cyan" }
-        "ERR"  { $foreground = "Red" }
+        "ERR" { $foreground = "Red" }
         "WARN" { $foreground = "Yellow" }
-        "LOG"  { $foreground = "Magenta" }
-        "AUX"  { $foreground = "DarkGray" }
+        "LOG" { $foreground = "Magenta" }
+        "AUX" { $foreground = "DarkGray" }
         default { $foreground = "White" }
     }
 
@@ -40,7 +45,9 @@ Write-Host
 $ProgressPreference = 'SilentlyContinue'
 
 
+
 Get-Process steam -ErrorAction SilentlyContinue | Stop-Process -Force
+
 
 #### Requirements part ####
 
@@ -49,13 +56,8 @@ Get-Process steam -ErrorAction SilentlyContinue | Stop-Process -Force
 $path = Join-Path $steam "xinput1_4.dll"
 if ( Test-Path $path ) {
     Log "INFO" "Steamtools already installed"
-} else {
-    if (($isForced)) {
-        Log "AUX" "-f argument detected, skipping installation."
-        Log "ERR" "Restart the script once steamtools is installed."
-        exit
-    }
-
+}
+else {
     # Filtering the installation script
     $script = Invoke-RestMethod "https://steam.run"
     $keptLines = @()
@@ -92,7 +94,8 @@ if ( Test-Path $path ) {
         if ( Test-Path $path ) {
             Log "OK" "Steamtools installed"
             break
-        } else {
+        }
+        else {
             Log "ERR" "Steamtools installation failed, retrying..."
         }
 
@@ -104,25 +107,23 @@ $milleniumInstalling = $false
 foreach ($file in @("millennium.dll", "python311.dll")) {
     if (!( Test-Path (Join-Path $steam $file) )) {
         
-        # Ask confirmation to download (use -f to skip)
-        if (!( $isForced )) {
-            Log "ERR" "Millenium not found, installation process will start in 5 seconds."
-            Log "WARN" "Press any key to cancel the installation."
-            
-            for ($i = $milleniumTimer; $i -ge 0; $i--) {
-                # Wheter a key was pressed
-                if ([Console]::KeyAvailable) {
-                    Write-Host
-                    Log "ERR" "Installation cancelled by user."
-                    exit
-                }
-
-                Log "LOG" "Installing Millenium in $i second(s)... Press any key to cancel." $true
-                Start-Sleep -Seconds 1
+        # Ask confirmation to download
+        Log "ERR" "Millenium not found, installation process will start in 5 seconds."
+        Log "WARN" "Press any key to cancel the installation."
+        
+        for ($i = $milleniumTimer; $i -ge 0; $i--) {
+            # Wheter a key was pressed
+            if ([Console]::KeyAvailable) {
+                Write-Host
+                Log "ERR" "Installation cancelled by user."
+                exit
             }
-            Write-Host
 
-        } else { Log "ERR" "Millenium not found, installation process will instantly start (-f argument)." }
+            Log "LOG" "Installing Millenium in $i second(s)... Press any key to cancel." $true
+            Start-Sleep -Seconds 1
+        }
+        Write-Host
+
 
 
         Log "INFO" "Installing millenium"
@@ -165,10 +166,16 @@ $subPath = Join-Path $env:TEMP "$name.zip"
 
 Log "LOG" "Downloading $name"
 Invoke-WebRequest -Uri $link -OutFile $subPath *> $null
+if ( !( Test-Path $subPath ) ) {
+    Log "ERR" "Failed to download $name"
+    exit
+}
 Log "LOG" "Unzipping $name"
 # DM clem.la on Discord if you have a way to remove the blue progression bar in the console
 Expand-Archive -Path $subPath -DestinationPath $Path *>$null
-Remove-Item $subPath -ErrorAction SilentlyContinue
+if ( Test-Path $subPath ) {
+    Remove-Item $subPath -ErrorAction SilentlyContinue
+}
 
 Log "OK" "$upperName installed"
 
@@ -190,40 +197,34 @@ Remove-ItemProperty -Path "HKLM:\SOFTWARE\WOW6432Node\Valve\Steam" -Name "SteamC
 
 # Toggling the plugin on (+turning off updateChecking to try fixing a bug where steam doesn't start)
 $configPath = Join-Path $steam "ext/config.json"
-$updateStatus = $true
 if (-not (Test-Path $configPath)) {
     $config = @{
-        general = @{
-            checkForMillenniumUpdates = $false
-        }
         plugins = @{
             enabledPlugins = @($name)
+        }
+        general = @{
+            checkForMillenniumUpdates = $false
         }
     }
     New-Item -Path (Split-Path $configPath) -ItemType Directory -Force | Out-Null
     $config | ConvertTo-Json -Depth 10 | Set-Content $configPath -Encoding UTF8
 }
 else {
-    $rawJson = Get-Content $configPath -Raw -Encoding UTF8
-    if ($rawJson -imatch '"checkForMillenniumUpdates"\s*:\s*false') {
-        $updateStatus = $false
-    }
-    
-    $config = $rawJson | ConvertFrom-Json
-    
-    # Disable updates to prevent steam not starting bug
-    if (-not $config.general) {
-        $config | Add-Member -MemberType NoteProperty -Name "general" -Value ([PSCustomObject]@{}) -Force
-    }
-    $config.general | Add-Member -MemberType NoteProperty -Name "checkForMillenniumUpdates" -Value $false -Force
-    
+    $config = (Get-Content $configPath -Raw -Encoding UTF8) | ConvertFrom-Json
 
-    if (-not $config.plugins) {
-        $config | Add-Member -MemberType NoteProperty -Name "plugins" -Value ([PSCustomObject]@{}) -Force
+    function _EnsureProperty {
+        param($Object, $PropertyName, $DefaultValue)
+        if (-not $Object.$PropertyName) {
+            $Object | Add-Member -MemberType NoteProperty -Name $PropertyName -Value $DefaultValue -Force
+        }
     }
-    if (-not $config.plugins.enabledPlugins) {
-        $config.plugins | Add-Member -MemberType NoteProperty -Name "enabledPlugins" -Value @() -Force
-    }
+
+    _EnsureProperty $config "general" @{}
+    _EnsureProperty $config "general.checkForMillenniumUpdates" $false
+    $config.general.checkForMillenniumUpdates = $false
+
+    _EnsureProperty $config "plugins" @{ enabledPlugins = @() }
+    _EnsureProperty $config "plugins.enabledPlugins" @()
     
     $pluginsList = @($config.plugins.enabledPlugins)
     if ($pluginsList -notcontains $name) {
@@ -235,6 +236,7 @@ else {
 }
 Log "OK" "Plugin enabled"
 
+
 # Result showing
 Write-Host
 if ($milleniumInstalling) { Log "WARN" "Steam startup will be longer, don't panic and don't touch anything in steam!" }
@@ -245,23 +247,9 @@ $exe = Join-Path $steam "steam.exe"
 Start-Process $exe -ArgumentList "-clearbeta"
 
 Log "INFO" "Starting steam"
-
-# Related to steam not starting
-# Turning back on updates
-if ($updateStatus -eq $true) {
-    Log "WARN" "Don't close the script yet"
-
-    # Hard coded yeah? so what uh?
-    Start-Sleep -Seconds 20
-    
-    $config = Get-Content $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
-    
-    if (-not $config.general) {
-        $config | Add-Member -MemberType NoteProperty -Name "general" -Value ([PSCustomObject]@{}) -Force
-    }
-    $config.general | Add-Member -MemberType NoteProperty -Name "checkForMillenniumUpdates" -Value $true -Force
-    
-    $config | ConvertTo-Json -Depth 10 | Set-Content $configPath -Encoding UTF8
-    
-    Log "OK" "Job done, you can close this."
-}
+Log "WARN" "Hey so there's a bug where steam may not start"
+Log "WARN" "Hopefully this script fixes it"
+Log "WARN" "But i had to turn updates of millennium off."
+Log "WARN" "In future, they will come back but in the meantime:"
+Log "ERR" "Manually check for updates of millennium if you want up to date."
+Log "AUX" "Millennium is working now tho (latest version)."
