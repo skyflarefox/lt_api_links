@@ -1,7 +1,7 @@
     "api_list": [
         {
-            "name": "Sadie",
-            "url": "http://167.235.229.108/m/<appid>",
+            "name": "Morrenus",
+            "url": "https://manifest.morrenus.xyz/api/v1/manifest/<appid>?api_key=<moapikey>",
             "success_code": 200,
             "unavailable_code": 404,
             "enabled": true
