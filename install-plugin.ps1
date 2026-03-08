@@ -1,7 +1,9 @@
 # Anyone seeing this? well don't waste time improving this script.
 # It's messy and just temporary until i get the new version.
 
-
+param(
+    [string]$DownloadLink # Overwrites the download link (give a direct link)
+)
 
 ## Configure this
 $Host.UI.RawUI.WindowTitle = "Luatools plugin installer | .gg/luatools"
@@ -15,6 +17,10 @@ chcp 65001 > $null
 # Hidden defines
 $steam = (Get-ItemProperty "HKLM:\SOFTWARE\WOW6432Node\Valve\Steam").InstallPath
 $upperName = $name.Substring(0, 1).ToUpper() + $name.Substring(1).ToLower()
+if ( $DownloadLink ) {
+    $link = $DownloadLink
+}
+
 
 #### Logging defines ####
 function Log {
