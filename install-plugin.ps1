@@ -13,6 +13,7 @@ $milleniumTimer = 5 # in seconds for auto-installation
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 chcp 65001 > $null
+Add-Type -AssemblyName System.IO.Compression.FileSystem
 
 # Hidden defines
 $steam = (Get-ItemProperty "HKLM:\SOFTWARE\WOW6432Node\Valve\Steam").InstallPath
@@ -171,14 +172,50 @@ foreach ($plugin in Get-ChildItem -Path (Join-Path $steam "plugins") -Directory)
 $subPath = Join-Path $env:TEMP "$name.zip"
 
 Log "LOG" "Downloading $name"
+if ($DownloadLink) { Log "Aux" $($link) }
 Invoke-WebRequest -Uri $link -OutFile $subPath *> $null
 if ( !( Test-Path $subPath ) ) {
     Log "ERR" "Failed to download $name"
     exit
 }
 Log "LOG" "Unzipping $name"
-# DM clem.la on Discord if you have a way to remove the blue progression bar in the console
-Expand-Archive -Path $subPath -DestinationPath $Path *>$null
+try {      
+    $zip = [System.IO.Compression.ZipFile]::OpenRead($subPath)
+    foreach ($entry in $zip.Entries) {
+        $destinationPath = Join-Path $Path $entry.FullName
+        
+        if (-not $entry.FullName.EndsWith('/') -and -not $entry.FullName.EndsWith('\')) {
+            $parentDir = Split-Path -Path $destinationPath -Parent
+            if ($parentDir -and $parentDir.Trim() -ne '') {
+                $pathParts = $parentDir -replace [regex]::Escape($steam), '' -split '[\\/]' | Where-Object { $_ }
+                $currentPath = $Path
+                
+                foreach ($part in $pathParts) {
+                    $currentPath = Join-Path $currentPath $part
+                    if (Test-Path $currentPath) {
+                        $item = Get-Item $currentPath
+                        if (-not $item.PSIsContainer) {
+                            Remove-Item $currentPath -Force
+                        }
+                    }
+                }
+                
+                [System.IO.Directory]::CreateDirectory($parentDir) | Out-Null
+                [System.IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $destinationPath, $true)
+            }
+        }
+    }
+    
+    $zip.Dispose()
+}
+catch {
+    write-host "Error: $($_.Exception.Message)"
+    if ($zip) { $zip.Dispose() }
+    Log "ERR" "Extraction failed, trying normal way"
+    Expand-Archive -Path $subPath -DestinationPath $Path -Force
+}
+
+
 if ( Test-Path $subPath ) {
     Remove-Item $subPath -ErrorAction SilentlyContinue
 }
