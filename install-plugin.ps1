@@ -60,7 +60,7 @@ Get-Process steam -ErrorAction SilentlyContinue | Stop-Process -Force
 
 # Steamtools check
 # TODO: Make this prettier?
-$path = Join-Path $steam "xinput1_4.dll"
+$path = Join-Path $steam "dwmapi.dll"
 if ( Test-Path $path ) {
     Log "INFO" "Steamtools already installed"
 }
