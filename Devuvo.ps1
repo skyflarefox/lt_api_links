@@ -1,15 +1,3 @@
-# Self-elevate to Administrator if not already running as admin
-$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-if (-not $isAdmin) {
-    if ($AppID) {
-        $cmd = "`$AppID = '$AppID'; irm 'https://luatools.vercel.app/Devuvo.ps1' | iex"
-    } else {
-        $cmd = "irm 'https://luatools.vercel.app/Devuvo.ps1' | iex"
-    }
-    Start-Process powershell -Verb RunAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"$cmd`"" -ErrorAction SilentlyContinue
-    exit
-}
-
 if ([string]::IsNullOrWhiteSpace($AppID)) {
     $AppID = Read-Host "Enter Steam AppID"
 }
