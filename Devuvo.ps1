@@ -221,7 +221,6 @@ $wuauserv = Get-Service -Name "wuauserv" -ErrorAction SilentlyContinue
 $wuMedic = Get-Service -Name "WaaSMedicSvc" -ErrorAction SilentlyContinue
 $updateOrch = Get-Service -Name "UsoSvc" -ErrorAction SilentlyContinue
 
-$updateBlocked = $true
 $wuDetails = @()
 
 foreach ($svcInfo in @(
@@ -233,19 +232,21 @@ foreach ($svcInfo in @(
     if ($svc) {
         $startType = $svc.StartType
         $status = $svc.Status
-        if ($startType -eq "Disabled" -and $status -eq "Stopped") {
+        if (($startType -eq "Disabled" -or [string]::IsNullOrWhiteSpace($startType)) -and $status -eq "Stopped") {
             Write-Host "    [+] $($svcInfo.Name): Disabled & Stopped" -ForegroundColor Green
             $wuDetails += "$($svcInfo.Name): Disabled & Stopped"
         } else {
             Write-Host "    [!] $($svcInfo.Name): $status (StartType: $startType)" -ForegroundColor Yellow
             $wuDetails += "$($svcInfo.Name): $status (StartType: $startType)"
-            $updateBlocked = $false
         }
     } else {
         Write-Host "    [~] $($svcInfo.Name): Service not found (OK)" -ForegroundColor DarkGray
         $wuDetails += "$($svcInfo.Name): Not found"
     }
 }
+
+# Updates are blocked if the core wuauserv service is disabled/stopped
+$updateBlocked = $wuauserv -and $wuauserv.Status -eq "Stopped" -and ($wuauserv.StartType -eq "Disabled" -or [string]::IsNullOrWhiteSpace($wuauserv.StartType))
 
 if ($updateBlocked) {
     Write-Host "`n    [+] Windows Update is BLOCKED." -ForegroundColor Green
@@ -285,7 +286,7 @@ if ($updateBlocked) {
 }
 
 # 6. Upload report to rTS Paste Service
-Write-Host "`n[*] Uploading scan report to paste service..." -ForegroundColor Cyan
+Write-Host "`n[*] Uploading report to give report code..." -ForegroundColor Cyan
 
 $jsonReport = [ordered]@{
     generated   = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
@@ -322,10 +323,9 @@ try {
         # Extract just the code from the URL (e.g. mc779imw from https://paste.rtech.support/mc779imw.txt)
         $pasteCode = ($pasteUrl -split '/')[-1] -replace '\.[^.]+$', ''
         
+        Set-Clipboard -Value $pasteCode
         Write-Host "`n    [+] Report uploaded successfully!" -ForegroundColor Green
-        Write-Host "    [+] Paste URL:  $pasteUrl" -ForegroundColor Cyan
-        Write-Host "    [+] Paste Code: $pasteCode" -ForegroundColor Cyan
-        Write-Host "`n    Share the code '$pasteCode' with support staff." -ForegroundColor White
+        Write-Host "    [+] D-Report Code: $pasteCode (copied to clipboard)" -ForegroundColor Cyan
     } else {
         Write-Host "    [-] Upload succeeded but no URL returned." -ForegroundColor Yellow
         Write-Host "    Response: $($response | ConvertTo-Json -Compress)" -ForegroundColor DarkGray
