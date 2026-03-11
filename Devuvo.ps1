@@ -77,31 +77,22 @@ if ($gameInstalled) {
 Write-Host "`n[*] Checking Windows Update status..." -ForegroundColor Cyan
 
 $wuauserv = Get-Service -Name "wuauserv" -ErrorAction SilentlyContinue
-$wuMedic = Get-Service -Name "WaaSMedicSvc" -ErrorAction SilentlyContinue
-$updateOrch = Get-Service -Name "UsoSvc" -ErrorAction SilentlyContinue
 
 $wuDetails = @()
 
-foreach ($svcInfo in @(
-    @{ Name = "Windows Update (wuauserv)"; Svc = $wuauserv },
-    @{ Name = "Windows Update Medic (WaaSMedicSvc)"; Svc = $wuMedic },
-    @{ Name = "Update Orchestrator (UsoSvc)"; Svc = $updateOrch }
-)) {
-    $svc = $svcInfo.Svc
-    if ($svc) {
-        $startType = $svc.StartType
-        $status = $svc.Status
-        if (($startType -eq "Disabled" -or [string]::IsNullOrWhiteSpace($startType)) -and $status -eq "Stopped") {
-            Write-Host "    [+] $($svcInfo.Name): Disabled & Stopped" -ForegroundColor Green
-            $wuDetails += "$($svcInfo.Name): Disabled & Stopped"
-        } else {
-            Write-Host "    [!] $($svcInfo.Name): $status (StartType: $startType)" -ForegroundColor Yellow
-            $wuDetails += "$($svcInfo.Name): $status (StartType: $startType)"
-        }
+if ($wuauserv) {
+    $startType = $wuauserv.StartType
+    $status = $wuauserv.Status
+    if (($startType -eq "Disabled" -or [string]::IsNullOrWhiteSpace($startType)) -and $status -eq "Stopped") {
+        Write-Host "    [+] Windows Update (wuauserv): Disabled & Stopped" -ForegroundColor Green
+        $wuDetails += "Windows Update (wuauserv): Disabled & Stopped"
     } else {
-        Write-Host "    [~] $($svcInfo.Name): Service not found (OK)" -ForegroundColor DarkGray
-        $wuDetails += "$($svcInfo.Name): Not found"
+        Write-Host "    [!] Windows Update (wuauserv): $status (StartType: $startType)" -ForegroundColor Yellow
+        $wuDetails += "Windows Update (wuauserv): $status (StartType: $startType)"
     }
+} else {
+    Write-Host "    [~] Windows Update (wuauserv): Service not found (OK)" -ForegroundColor DarkGray
+    $wuDetails += "Windows Update (wuauserv): Not found"
 }
 
 # Updates are blocked if the core wuauserv service is disabled/stopped
@@ -162,7 +153,6 @@ foreach ($indicator in $goldbergIndicators) {
     $found = Get-ChildItem -Path $installDir -Recurse -Filter $indicator -ErrorAction SilentlyContinue
     foreach ($match in $found) {
         $relativePath = $match.FullName.Substring($installDir.Length).TrimStart('\','/')
-        Write-Host "    [!] WARNING: Found Goldberg file/folder: $relativePath" -ForegroundColor Yellow
         $foundGoldberg = $true
         $reportData.GoldbergFiles += $relativePath
     }
@@ -173,7 +163,6 @@ foreach ($dll in $steamDlls) {
     try {
         $versionInfo = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($dll.FullName)
         if ($versionInfo.ProductName -match "Goldberg" -or $versionInfo.CompanyName -match "Goldberg" -or $versionInfo.FileDescription -match "Goldberg") {
-            Write-Host "    [!] WARNING: Found Goldberg patched DLL: $($dll.Name) at $($dll.DirectoryName)" -ForegroundColor Yellow
             $foundGoldberg = $true
             $reportData.GoldbergFiles += "$($dll.Name) (patched DLL)"
         }
@@ -181,7 +170,12 @@ foreach ($dll in $steamDlls) {
 }
 
 $reportData.HasGoldberg = $foundGoldberg
-if (-not $foundGoldberg) {
+if ($foundGoldberg) {
+    Write-Host "    [!] WARNING: Found Goldberg Emulator files:" -ForegroundColor Yellow
+    foreach ($f in $reportData.GoldbergFiles) {
+        Write-Host "        - $f" -ForegroundColor Yellow
+    }
+} else {
     Write-Host "    [+] No obvious Goldberg files detected." -ForegroundColor Green
 }
 
