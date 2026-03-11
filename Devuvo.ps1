@@ -155,15 +155,16 @@ Write-Host "[+] Folder Size: $folderSizeStr" -ForegroundColor Green
 
 # 5. Goldberg scan
 Write-Host "`n[*] Scanning for Goldberg Emulator files..." -ForegroundColor Cyan
-$goldbergIndicators = @("steam_settings", "steam_interfaces.txt", "coldclientloader.ini", "local_save.txt")
+$goldbergIndicators = @("steam_settings", "steam_interfaces.txt", "coldclientloader.ini", "local_save.txt", "configs.user.ini")
 $foundGoldberg = $false
 
 foreach ($indicator in $goldbergIndicators) {
-    $targetPath = Join-Path $installDir $indicator
-    if (Test-Path $targetPath) {
-        Write-Host "    [!] WARNING: Found Goldberg specific file/folder: $indicator" -ForegroundColor Yellow
+    $found = Get-ChildItem -Path $installDir -Recurse -Filter $indicator -ErrorAction SilentlyContinue
+    foreach ($match in $found) {
+        $relativePath = $match.FullName.Substring($installDir.Length).TrimStart('\','/')
+        Write-Host "    [!] WARNING: Found Goldberg file/folder: $relativePath" -ForegroundColor Yellow
         $foundGoldberg = $true
-        $reportData.GoldbergFiles += $indicator
+        $reportData.GoldbergFiles += $relativePath
     }
 }
 
