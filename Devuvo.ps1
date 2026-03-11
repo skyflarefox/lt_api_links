@@ -8,8 +8,6 @@ $reportData = [ordered]@{
     GameName           = "N/A"
     Installed          = $false
     FolderSize         = "N/A"
-    MainExe            = "N/A"
-    ExeSize            = "N/A"
     HasGoldberg        = $false
     GoldbergFiles      = @()
     UpdatesDisabled    = $false
@@ -85,28 +83,6 @@ if ($gameInstalled) {
     }
     $reportData.FolderSize = $folderSizeStr
     Write-Host "[+] Folder Size: $folderSizeStr" -ForegroundColor Green
-
-    # Main exe size
-    $excludePattern = "(?i)CrashHandler|CrashReport|unins.*|vcredist.*|dxwebsetup|dotnet.*|physx.*|oalinst|cefclient|vc_redist.*"
-    $mainExe = Get-ChildItem -Path $installDir -Recurse -Filter "*.exe" -File -ErrorAction SilentlyContinue | 
-        Where-Object { 
-            $_.Name -notmatch $excludePattern -and 
-            $_.FullName -notmatch "(?i)\\(_CommonRedist|_Redist)\\.*" 
-        } | Sort-Object Length -Descending | Select-Object -First 1
-    if ($mainExe) {
-        if ($mainExe.Length -ge 1GB) {
-            $exeSizeStr = "{0:N2} GB" -f ($mainExe.Length / 1GB)
-        } elseif ($mainExe.Length -ge 1MB) {
-            $exeSizeStr = "{0:N2} MB" -f ($mainExe.Length / 1MB)
-        } else {
-            $exeSizeStr = "{0:N2} KB" -f ($mainExe.Length / 1KB)
-        }
-        $reportData.MainExe = $mainExe.Name
-        $reportData.ExeSize = $exeSizeStr
-        Write-Host "[+] Main EXE ($($mainExe.Name)) Size: $exeSizeStr" -ForegroundColor Green
-    } else {
-        Write-Host "[-] No executable found in game directory." -ForegroundColor Yellow
-    }
 
     # 3. Goldberg scan
     Write-Host "`n[*] Scanning for Goldberg Emulator files..." -ForegroundColor Cyan
@@ -294,8 +270,6 @@ $jsonReport = [ordered]@{
     game_name   = $reportData.GameName
     installed   = $reportData.Installed
     folder_size = $reportData.FolderSize
-    main_exe    = $reportData.MainExe
-    exe_size    = $reportData.ExeSize
     has_goldberg      = $reportData.HasGoldberg
     goldberg_files    = $reportData.GoldbergFiles
     lua_file_found    = $reportData.LuaFileFound
