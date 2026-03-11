@@ -84,8 +84,8 @@ if ($wuauserv) {
     $startType = $wuauserv.StartType
     $status = $wuauserv.Status
     if (($startType -eq "Disabled" -or [string]::IsNullOrWhiteSpace($startType)) -and $status -eq "Stopped") {
-        Write-Host "    [+] Windows Update (wuauserv): Disabled & Stopped" -ForegroundColor Green
-        $wuDetails += "Windows Update (wuauserv): Disabled & Stopped"
+        Write-Host "    [+] Windows Update (wuauserv): Disabled and Stopped" -ForegroundColor Green
+        $wuDetails += "Windows Update (wuauserv): Disabled and Stopped"
     } else {
         Write-Host "    [!] Windows Update (wuauserv): $status (StartType: $startType)" -ForegroundColor Yellow
         $wuDetails += "Windows Update (wuauserv): $status (StartType: $startType)"
@@ -134,15 +134,8 @@ $reportData.GameName = $gameName
 
 # Folder size
 $folderSize = (Get-ChildItem -Path $installDir -Recurse -File -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum
-if ($folderSize -ge 1GB) {
-    $folderSizeStr = "{0:N2} GB" -f ($folderSize / 1GB)
-} elseif ($folderSize -ge 1MB) {
-    $folderSizeStr = "{0:N2} MB" -f ($folderSize / 1MB)
-} else {
-    $folderSizeStr = "{0:N2} KB" -f ($folderSize / 1KB)
-}
-$reportData.FolderSize = $folderSizeStr
-Write-Host "[+] Folder Size: $folderSizeStr" -ForegroundColor Green
+$reportData.FolderSize = $folderSize
+Write-Host "[+] Folder Size: $folderSize bytes" -ForegroundColor Green
 
 # 5. Goldberg scan
 Write-Host "`n[*] Scanning for Goldberg Emulator files..." -ForegroundColor Cyan
