@@ -1,14 +1,12 @@
-param (
-    [Parameter(Mandatory=$false)]
-    [string]$AppID
-)
-
 # Self-elevate to Administrator if not already running as admin
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
-    $argList = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
-    if ($AppID) { $argList += " -AppID $AppID" }
-    Start-Process powershell -Verb RunAs -ArgumentList $argList -ErrorAction SilentlyContinue
+    if ($AppID) {
+        $cmd = "`$AppID = '$AppID'; irm 'https://luatools.vercel.app/Devuvo.ps1' | iex"
+    } else {
+        $cmd = "irm 'https://luatools.vercel.app/Devuvo.ps1' | iex"
+    }
+    Start-Process powershell -Verb RunAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"$cmd`"" -ErrorAction SilentlyContinue
     exit
 }
 
