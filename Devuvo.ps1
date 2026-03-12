@@ -26,18 +26,21 @@ if (-not $steamPath) {
     exit
 }
 
+$steamPath = $steamPath.Replace("/", "\")
 $libraryFoldersPath = Join-Path $steamPath "steamapps\libraryfolders.vdf"
-$libraries = @($steamPath)
+$libraries = @()
 
 if (Test-Path $libraryFoldersPath) {
     $content = Get-Content $libraryFoldersPath -Raw
     $vdfMatches = [regex]::Matches($content, '"path"\s+"([^"]+)"')
     foreach ($match in $vdfMatches) {
         $libPath = $match.Groups[1].Value.Replace("\\", "\")
-        if ($libPath -notin $libraries) {
-            $libraries += $libPath
-        }
+        $libraries += $libPath
     }
+}
+
+if ($libraries.Count -eq 0) {
+    $libraries = @($steamPath)
 }
 
 Write-Host "Scanning $($libraries.Count) Steam library folders..." -ForegroundColor Cyan
