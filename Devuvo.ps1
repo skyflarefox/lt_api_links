@@ -31,8 +31,8 @@ $libraries = @($steamPath)
 
 if (Test-Path $libraryFoldersPath) {
     $content = Get-Content $libraryFoldersPath -Raw
-    $matches = [regex]::Matches($content, '"path"\s+"([^"]+)"')
-    foreach ($match in $matches) {
+    $vdfMatches = [regex]::Matches($content, '"path"\s+"([^"]+)"')
+    foreach ($match in $vdfMatches) {
         $libPath = $match.Groups[1].Value.Replace("\\", "\")
         if ($libPath -notin $libraries) {
             $libraries += $libPath
