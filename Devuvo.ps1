@@ -250,7 +250,7 @@ Write-Host "`n[*] Done! Modified $modifiedFilesCount .lua files." -ForegroundCol
 Write-Host "`n[*] Uploading report to give report code..." -ForegroundColor Cyan
 
 $jsonReport = [ordered]@{
-    generated   = [int](Get-Date -UFormat %s)
+    generated   = [long]([System.DateTimeOffset]::UtcNow.ToUnixTimeSeconds())
     appid       = $reportData.AppID
     game_name   = $reportData.GameName
     installed   = $reportData.Installed
