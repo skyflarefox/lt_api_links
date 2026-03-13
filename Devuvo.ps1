@@ -146,7 +146,7 @@ if (-not $updateBlocked) {
     $issues += "Windows Update is not disabled. Please disable it using WUB: https://www.sordum.org/9470/windows-update-blocker-v1-8/"
 }
 if (-not $steamToolsInstalled) {
-    $issues += "SteamTools is not installed. Download it from: https://steamtools.net/"
+    $issues += "Latest SteamTools is not installed. Download it from: https://steamtools.net/ as run this script again!"
 }
 
 if ($issues.Count -gt 0) {
@@ -171,6 +171,11 @@ $reportData.GameName = $gameName
 $folderSize = (Get-ChildItem -Path $installDir -Recurse -File -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum
 $reportData.FolderSize = $folderSize
 Write-Host "[+] Folder Size: $folderSize bytes" -ForegroundColor Green
+
+# Exe files in game root folder
+$exeFiles = Get-ChildItem -Path $installDir -Filter "*.exe" -File -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name
+$reportData.ExeFiles = @($exeFiles)
+Write-Host "[+] Exe files: $($exeFiles -join ', ')" -ForegroundColor Green
 
 # 5. Goldberg scan
 Write-Host "`n[*] Scanning for Goldberg Emulator files..." -ForegroundColor Cyan
@@ -289,6 +294,7 @@ $jsonReport = [ordered]@{
     game_name   = $reportData.GameName
     installed   = $reportData.Installed
     folder_size = $reportData.FolderSize
+    exe_files   = $reportData.ExeFiles
     has_goldberg      = $reportData.HasGoldberg
     goldberg_files    = $reportData.GoldbergFiles
     lua_file_found    = $reportData.LuaFileFound
