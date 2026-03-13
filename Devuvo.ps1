@@ -127,13 +127,26 @@ if ($updateBlocked) {
     Write-Host "`n    [-] Windows Update is NOT blocked." -ForegroundColor Red
 }
 
-# 4. Gate check - stop if something is wrong
+# 4. Check SteamTools (dwmapi.dll in Steam folder)
+Write-Host "`n[*] Checking SteamTools..." -ForegroundColor Cyan
+$dwmapiPath = Join-Path $steamPath "dwmapi.dll"
+$steamToolsInstalled = Test-Path $dwmapiPath
+if ($steamToolsInstalled) {
+    Write-Host "    [+] SteamTools detected (dwmapi.dll found)" -ForegroundColor Green
+} else {
+    Write-Host "    [-] SteamTools NOT found (dwmapi.dll missing)" -ForegroundColor Red
+}
+
+# 5. Gate check - stop if something is wrong
 $issues = @()
 if (-not $gameInstalled) {
     $issues += "Game with AppID $AppID is not installed. Please install it first."
 }
 if (-not $updateBlocked) {
     $issues += "Windows Update is not disabled. Please disable it using WUB: https://www.sordum.org/9470/windows-update-blocker-v1-8/"
+}
+if (-not $steamToolsInstalled) {
+    $issues += "SteamTools is not installed. Download it from: https://steamtools.net/"
 }
 
 if ($issues.Count -gt 0) {
