@@ -18,15 +18,34 @@ $reportData = [ordered]@{
 Write-Host "Looking for Steam installation..." -ForegroundColor Cyan
 
 # 1. Find Steam Path and Library Folders
-$steamPath = (Get-ItemProperty -Path "HKCU:\Software\Valve\Steam" -Name "SteamPath" -ErrorAction SilentlyContinue).SteamPath
-if (-not $steamPath) {
-    Write-Host "[-] Could not find Steam installation registry key." -ForegroundColor Red
+$steamPath = $null
+
+# Try SteamExe first (most reliable — points to steam.exe)
+$steamExe = (Get-ItemProperty -Path "HKCU:\Software\Valve\Steam" -Name "SteamExe" -ErrorAction SilentlyContinue).SteamExe
+if ($steamExe) {
+    $steamPath = (Split-Path $steamExe -Parent).Replace("/", "\")
+}
+
+# Fallback: HKLM InstallPath
+if (-not $steamPath -or -not (Test-Path $steamPath)) {
+    $steamPath = (Get-ItemProperty -Path "HKLM:\SOFTWARE\WOW6432Node\Valve\Steam" -Name "InstallPath" -ErrorAction SilentlyContinue).InstallPath
+}
+
+# Fallback: SteamPath
+if (-not $steamPath -or -not (Test-Path $steamPath)) {
+    $steamPath = (Get-ItemProperty -Path "HKCU:\Software\Valve\Steam" -Name "SteamPath" -ErrorAction SilentlyContinue).SteamPath
+    if ($steamPath) { $steamPath = $steamPath.Replace("/", "\") }
+}
+
+if (-not $steamPath -or -not (Test-Path $steamPath)) {
+    Write-Host "[-] Could not find Steam installation." -ForegroundColor Red
     Write-Host "Press any key to exit..."
     $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
     exit
 }
 
-$steamPath = $steamPath.Replace("/", "\")
+Write-Host "[+] Steam found at: $steamPath" -ForegroundColor Green
+
 $libraryFoldersPath = Join-Path $steamPath "steamapps\libraryfolders.vdf"
 $libraries = @()
 
