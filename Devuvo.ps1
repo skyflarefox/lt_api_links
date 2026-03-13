@@ -206,12 +206,12 @@ foreach ($luaFile in $luaFiles) {
     $alreadyConfigured = $true
 
     foreach ($line in $content) {
-        if ($line -match "^\s*--\s*(addappid\(.*)") {
+        if ($line -match "^\s*--\s*(addappid\(\s*$AppID\s*\)\s*)$") {
             $newContent += $matches[1]
             $modified = $true
             $alreadyConfigured = $false
         }
-        elseif (($line -match "(?i)decryption.*key" -or $line -match "(?i)setManifestid\(") -and $line -notmatch "^\s*--") {
+        elseif (($line -match "(?i)setManifestid\(" -or $line -match "(?i)addappid\(.+,.+,.+\)") -and $line -notmatch "^\s*--") {
             $newContent += "-- $line"
             $modified = $true
             $alreadyConfigured = $false
@@ -220,9 +220,11 @@ foreach ($luaFile in $luaFiles) {
         }
     }
 
-    # Check if setManifestid lines exist and are already commented = updates disabled
+    # Check if lua is already correctly configured
     $luaRaw = Get-Content $luaFile.FullName -Raw
-    if ($luaRaw -match "(?m)^\s*--\s*setManifestid\(" -or ($luaRaw -notmatch "setManifestid\(")) {
+    $manifestCommented = ($luaRaw -match "(?m)^\s*--\s*setManifestid\(") -or ($luaRaw -notmatch "setManifestid\(")
+    $dlcCommented = ($luaRaw -notmatch "(?m)^addappid\(.+,.+,.+\)") # no uncommented DLC lines
+    if ($manifestCommented -and $dlcCommented) {
         $reportData.UpdatesDisabled = $true
     }
 
