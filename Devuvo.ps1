@@ -70,8 +70,8 @@ $gameName = $null
 
 foreach ($lib in $libraries) {
     $manifestPath = Join-Path $lib "steamapps\appmanifest_$AppID.acf"
-    if (Test-Path $manifestPath) {
-        $manifestContent = Get-Content $manifestPath -Raw
+    if (Test-Path -LiteralPath $manifestPath) {
+        $manifestContent = Get-Content -LiteralPath $manifestPath -Raw
 
         $installDirNameMatch = [regex]::Match($manifestContent, '"installdir"\s+"([^"]+)"')
         $nameMatch = [regex]::Match($manifestContent, '"name"\s+"([^"]+)"')
@@ -168,13 +168,22 @@ $reportData.Installed = $true
 $reportData.GameName = $gameName
 
 # Folder size
-$folderSize = (Get-ChildItem -Path $installDir -Recurse -File -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum
+Write-Host "[*] Calculating folder size (this may take a moment)..." -ForegroundColor Cyan
+$folderSize = 0
+try {
+    $folderSize = (Get-ChildItem -LiteralPath $installDir -Recurse -File -Force -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum
+} catch {}
 $reportData.FolderSize = $folderSize
 Write-Host "[+] Folder Size: $folderSize bytes" -ForegroundColor Green
 
 # Exe files in game root folder
-$exeFiles = Get-ChildItem -Path $installDir -Filter "*.exe" -File -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name
-$reportData.ExeFiles = @($exeFiles)
+$exeFiles = @()
+try {
+    $exeFiles = @(Get-ChildItem -LiteralPath $installDir -Filter "*.exe" -File -Force -ErrorAction Stop | Select-Object -ExpandProperty Name)
+} catch {
+    Write-Host "    [!] Could not read exe files: $_" -ForegroundColor Yellow
+}
+$reportData.ExeFiles = $exeFiles
 Write-Host "[+] Exe files: $($exeFiles -join ', ')" -ForegroundColor Green
 
 # 5. Goldberg scan
